@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Voice Time Guess — UI Tweaks</title>
+<style>
+  :root{
+    /* Color palette (dark theme by default) */
+    --bg-0: #0f1724;
+    --bg-1: #14243a;
+    --card: rgba(255,255,255,0.03);
+    --muted: rgba(255,255,255,0.85);
+    --accent: #00e676;
+    --accent-2:#00c167;
+    --good:#7cffb2;
+    --warn:#ffd54f;
+    --bad:#ff7043;
+    --glass: rgba(255,255,255,0.04);
+    --shadow: 0 10px 40px rgba(0,0,0,0.5);
+
+    --radius: 12px;
+
+    font-size:16px;
+    transition: background-color 300ms ease, color 300ms ease;
+  }
+
+  /* Light theme (applied via .theme-light on body) */
+  .theme-light {
+    --bg-0: #f6f8fb;
+    --bg-1: #e9eef6;
+    --card: rgba(0,0,0,0.04);
+    --muted: rgba(20,30,40,0.9);
+    --accent: #0066cc;
+    --accent-2:#0054a6;
+    --good:#007a44;
+    --warn:#b37400;
+    --bad:#b30000;
+    --glass: rgba(0,0,0,0.04);
+    --shadow: 0 8px 24px rgba(18,26,36,0.08);
+  }
+
+  /* Compact density mode (applied via .compact on body) */
+  .compact {
+    --radius: 8px;
+    font-size:14px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Segoe UI,Arial,sans-serif}
+  html,body{height:100%}
+  body{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background: linear-gradient(135deg,var(--bg-0), var(--bg-1));
+    color:var(--muted);
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  .game{
+    width:100%;
+    max-width:640px;
+    border-radius:20px;
+    padding:20px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(8px);
+    position:relative;
+    overflow:hidden;
+    transition: all 250ms ease;
+  }
+
+  header{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  h1{font-size:1.2rem}
+  .subtitle{opacity:0.9;font-size:0.95rem}
+  .controls{display:flex;gap:12px;align-items:center;margin-top:10px}
+  label{font-size:0.9rem;display:block}
+  input[type=number]{
+    padding:10px 12px;border-radius:10px;border:none;background:var(--card);
+    color:inherit;font-size:1rem;text-align:center;width:120px;
+    transition: transform 160ms ease;
+  }
+
+  .timer{
+    font-size:3.2rem;font-weight:800;letter-spacing:1px;margin:14px 0;text-align:center;
+    color:var(--muted);
+    transition: transform 180ms ease, color 200ms ease;
+    will-change: transform;
+  }
+
+  /* progress bar under timer */
+  .progress-wrap{height:10px;border-radius:999px;background:rgba(255,255,255,0.03);overflow:hidden;margin-bottom:12px;transition:opacity 180ms}
+  .progress{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width 120ms linear}
+
+  .buttons{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  button{
+    padding:10px 12px;border-radius:10px;border:none;font-weight:700;cursor:pointer;
+    font-size:0.98rem;background:var(--accent);color:#05261a;transition:transform 140ms ease,box-shadow 140ms;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  }
+  button.secondary{background:#fff;color:var(--muted);box-shadow:none}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit}
+  button:active{transform: translateY(2px) scale(0.995)}
+  button:hover{transform: translateY(-3px) scale(1.01)}
+  .small{font-size:0.85rem;color:rgba(255,255,255,0.82)}
+
+  .voice{
+    margin-top:12px;padding:12px;border-radius:12px;background:var(--glass);
+    display:flex;gap:10px;align-items:center;transition:transform 200ms;
+  }
+  .mic{font-size:26px}
+  .status{font-size:0.95rem;opacity:0.95}
+
+  .result{
+    margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.02);
+    display:flex;flex-direction:column;gap:8px;transition:opacity 200ms, transform 220ms;
+  }
+  .difference{font-size:1rem;font-weight:700}
+  .history{margin-top:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.02);max-height:220px;overflow:auto;transition:max-height 260ms}
+  .history-item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed rgba(255,255,255,0.03)}
+  .controls-row{display:flex;gap:10px;align-items:center}
+  .focus-ring:focus{outline:3px solid rgba(0,198,120,0.18);box-shadow:0 0 0 6px rgba(0,198,120,0.05)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .badge{padding:6px 10px;border-radius:999px;background:rgba(0,0,0,0.14);font-weight:600}
+  .result-level-perfect{color:var(--good)}
+  .result-level-close{color:var(--warn)}
+  .result-level-miss{color:var(--bad)}
+
+  /* Confetti canvas sits on top */
+  #confettiCanvas{position:absolute;left:0;top:0;pointer-events:none;width:100%;height:100%;z-index:50}
+
+  /* compact adjustments */
+  .compact .game{padding:12px}
+  .compact .timer{font-size:2.2rem}
+  .compact input[type=number]{width:100px;padding:8px}
+  .compact .buttons button{padding:8px 10px;font-size:0.9rem}
+
+  /* history open animation */
+  .history.collapsed{max-height:0;padding:0;opacity:0}
+  .history.expanded{max-height:300px;opacity:1}
+
+  @media (max-width:560px){
+    .game{padding:14px}
+    .buttons{grid-template-columns:1fr}
+    .timer{font-size:2.8rem}
+  }
+</style>
+</head>
+<body class="">
+<div class="game" role="application" aria-labelledby="title">
+  <canvas id="confettiCanvas" aria-hidden="true"></canvas>
+
+  <header style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div>
+      <h1 id="title">⏱️ Time Guess</h1>
+      <div class="subtitle">Stop the timer using voice or keyboard (Space / Enter)</div>
+    </div>
+
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+      <label class="small" title="Theme">
+        <select id="themeSelect" aria-label="Theme" style="padding:6px;border-radius:8px;border:none;background:var(--card);color:inherit">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+
+      <label class="small" title="Density">
+        <select id="densitySelect" aria-label="Density" style="padding:6px;border-radius:8px;border:none;background:var(--card);color:inherit">
+          <option value="comfortable">Comfortable</option>
+          <option value="compact">Compact</option>
+        </select>
+      </label>
+
+      <div aria-hidden="true">
+        <span class="badge" id="bestBadge">Best: —</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px">
+      <label for="targetInput">Target Time (s)</label>
+      <input id="targetInput" type="number" min="1" max="300" value="10" class="focus-ring" aria-label="Target time in seconds">
+      <div class="small" style="margin-left:auto">Precision: 0.01s</div>
+    </div>
+
+    <div class="timer" id="timer" aria-live="polite">0.00</div>
+
+    <div class="progress-wrap" id="progressWrap" aria-hidden="true" style="opacity:0">
+      <div class="progress" id="progressBar"></div>
+    </div>
+
+    <div class="buttons" role="group" aria-label="Controls" style="margin-top:8px">
+      <button id="startBtn" class="focus-ring">▶ START</button>
+      <button id="stopBtn" class="secondary focus-ring" disabled>🛑 STOP</button>
+      <button id="resetBtn" class="ghost focus-ring" title="Reset">↻ RESET</button>
+      <button id="historyBtn" class="ghost focus-ring" title="History">📜 HISTORY</button>
+    </div>
+
+    <div class="voice" style="margin-top:12px">
+      <div class="mic" aria-hidden="true">🎤</div>
+      <div>
+        <strong>Voice Control</strong>
+        <div id="status" class="status" aria-live="polite">Press START, allow microphone, then say "STOP"</div>
+        <div class="small">Chromium browsers over HTTPS or localhost recommended.</div>
+      </div>
+    </div>
+
+    <section class="result" id="result" aria-live="polite" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="small">Target: <strong id="targetResult">0</strong>s</div>
+          <div class="small">Your Time: <strong id="yourTime">0</strong>s</div>
+        </div>
+        <div id="difference" class="difference">—</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button id="saveBtn" class="ghost">Save</button>
+        <button id="exportBtn" class="ghost">Export CSV</button>
+        <button id="clearHistoryBtn" class="ghost">Clear</button>
+      </div>
+    </section>
+
+    <div id="historyPanel" class="history collapsed" aria-hidden="true" style="margin-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Attempts</strong>
+        <small class="small" id="historyCount">0</small>
+      </div>
+      <div id="historyList" aria-live="polite"></div>
+    </div>
+  </main>
+
+  <p class="sr-only" id="assistive">Status messages will appear here for screen readers.</p>
+</div>
+
+<script>
+/*
+  Voice Time Guess — UI Tweaks
+  - Adds theme and density toggles
+  - Adds progress bar showing proximity to target
+  - Smooth animations and button micro-interactions
+  - Confetti celebration for PERFECT results
+  - Preserves previous logic: voice recognition, keyboard fallback, auto-save, TTS, history, ARIA
+*/
+
+(() => {
+  // Elements
+  const body = document.body;
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const historyBtn = document.getElementById('historyBtn');
+  const timerEl = document.getElementById('timer');
+  const statusEl = document.getElementById('status');
+  const resultEl = document.getElementById('result');
+  const targetInput = document.getElementById('targetInput');
+  const targetResult = document.getElementById('targetResult');
+  const yourTimeEl = document.getElementById('yourTime');
+  const differenceEl = document.getElementById('difference');
+  const historyPanel = document.getElementById('historyPanel');
+  const historyList = document.getElementById('historyList');
+  const historyCount = document.getElementById('historyCount');
+  const bestBadge = document.getElementById('bestBadge');
+  const saveBtn = document.getElementById('saveBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressBar = document.getElementById('progressBar');
+  const confettiCanvas = document.getElementById('confettiCanvas');
+  const themeSelect = document.getElementById('themeSelect');
+  const densitySelect = document.getElementById('densitySelect');
+
+  // State & prefs
+  let running = false;
+  let startTime = 0;
+  let rafId = null;
+  let recognition = null;
+  let isRecognizing = false;
+  let lastStopTimestamp = 0;
+  const STOP_DEBOUNCE_MS = 800;
+  const HISTORY_KEY = 'time-guess-history-v1';
+  let restartAttempts = 0;
+  const MAX_RESTART_ATTEMPTS = 3;
+  let audioCtx = null;
+
+  // reuse STOP_RE from previous improvements (safe phrases)
+  const STOP_PHRASES = ["stop","stop it","stop timer","stop the timer","freeze","end timer","halt","that's enough","that is enough"];
+  const STOP_RE = new RegExp('\\b(' + STOP_PHRASES.map(s => s.replace(/'/g,"\\'").replace(/\\s+/g,'\\\\s+')).join('|') + ')\\b', 'i');
+
+  // Basic utilities
+  function formatSeconds(s){ return Number(s).toFixed(2); }
+  function loadHistory(){ try { const raw = localStorage.getItem(HISTORY_KEY); return raw ? JSON.parse(raw) : []; } catch(e){ return []; } }
+  function saveHistory(arr){ localStorage.setItem(HISTORY_KEY, JSON.stringify(arr)); }
+  function addHistoryEntry(entry){ const h = loadHistory(); h.unshift(entry); if (h.length>200) h.length=200; saveHistory(h); renderHistory(); }
+  function clearHistory(){ localStorage.removeItem(HISTORY_KEY); renderHistory(); }
+  function exportCSV(){ const h = loadHistory(); if (!h.length){ alert('No history to export.'); return; } const csv = ['timestamp,target,yourTime,diff_seconds'].concat(h.map(r => [new Date(r.timestamp).toISOString(), r.target, r.time, r.diff].join(',')).join('\\n')); const blob = new Blob([csv],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='time-guess-history.csv'; a.click(); URL.revokeObjectURL(url); }
+
+  function updateBestBadge(){ const h = loadHistory(); if (!h.length){ bestBadge.textContent = 'Best: —'; return; } const best = h.reduce((a,b)=> a.diff < b.diff ? a : b); bestBadge.textContent = `Best: ${formatSeconds(best.diff)}s`; }
+
+  function renderHistory(){
+    const h = loadHistory();
+    historyList.innerHTML = '';
+    historyCount.textContent = `${h.length}`;
+    if (!h.length){ historyList.innerHTML = '<div class="small">No attempts yet.</div>'; updateBestBadge(); return; }
+    for (const item of h){
+      const div = document.createElement('div'); div.className='history-item';
+      const left = document.createElement('div');
+      left.innerHTML = `<div><strong>${formatSeconds(item.time)}s</strong> <span class="small">target ${formatSeconds(item.target)}s</span></div><div class="small">${new Date(item.timestamp).toLocaleString()}</div>`;
+      const right = document.createElement('div'); right.style.textAlign='right';
+      right.innerHTML = `<div class="${item.diff<0.1 ? 'result-level-perfect' : (item.diff < 0.5 ? 'result-level-close' : 'result-level-miss')}"><strong>±${formatSeconds(item.diff)}s</strong></div>`;
+      div.appendChild(left); div.appendChild(right); historyList.appendChild(div);
+    }
+    updateBestBadge();
+  }
+
+  // Timer + progress
+  function startTimer(){
+    startTime = performance.now();
+    progressWrap.style.opacity = '1';
+    function frame(){
+      if (!running) return;
+      const elapsed = (performance.now() - startTime) / 1000;
+      timerEl.textContent = formatSeconds(elapsed);
+      // animate small pop on updates (subtle)
+      timerEl.style.transform = 'scale(1.01)';
+      setTimeout(()=>timerEl.style.transform='scale(1)',120);
+      // update proximity progress if target known
+      const target = Number(targetInput.value) || 0;
+      if (target > 0){
+        const max = Math.max(target, 1);
+        const pct = Math.min(1, elapsed / max);
+        progressBar.style.width = `${pct*100}%`;
+        progressBar.style.opacity = '1';
+      }
+      rafId = requestAnimationFrame(frame);
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+  function stopTimer(){ if (rafId) cancelAnimationFrame(rafId); rafId=null; progressBar.style.opacity='0'; setTimeout(()=>progressWrap.style.opacity='0',200); }
+
+  // Confetti
+  function makeConfetti(){
+    const canvas = confettiCanvas;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
+    const particles = [];
+    const colors = ['#ffcc00','#ff6b6b','#7cffb2','#00e676','#7aa0ff','#ff8fb1'];
+    for (let i=0;i<80;i++){
+      particles.push({
+        x: Math.random()*w,
+        y: -10 - Math.random()*200,
+        vx: (Math.random()-0.5)*6,
+        vy: Math.random()*4 + 2,
+        r: Math.random()*8 + 4,
+        rot: Math.random()*360,
+        color: colors[Math.floor(Math.random()*colors.length)],
+        life: 0,
+        ttl: 90 + Math.random()*40
+      });
+    }
+    let frame=0;
+    function draw(){
+      ctx.clearRect(0,0,w,h);
+      for (const p of particles){
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.06; // gravity
+        p.rot += p.vx*2;
+        p.life++;
+        ctx.save();
+        ctx.translate(p.x,p.y);
+        ctx.rotate(p.rot * Math.PI/180);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r*1.6);
+        ctx.restore();
+      }
+      frame++;
+      if (frame < 180) requestAnimationFrame(draw);
+      else ctx.clearRect(0,0,w,h);
+    }
+    draw();
+  }
+
+  // Speech utilities
+  function beep(){
+    try{
+      if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type='sine'; o.frequency.value = 880;
+      g.gain.value = 0.0001;
+      o.connect(g); g.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      g.gain.exponentialRampToValueAtTime(0.15, now+0.01);
+      o.start(now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+0.18);
+      o.stop(now+0.19);
+    }catch(e){}
+  }
+  function speakResult(finalTime, diff){
+    try{
+      const ss = window.speechSynthesis;
+      if (!ss) return;
+      const msg = `Stopped at ${finalTime.toFixed(2)} seconds. Difference ${diff.toFixed(2)} seconds.`;
+      const u = new SpeechSynthesisUtterance(msg);
+      u.lang='en-US'; u.rate=1;
+      ss.cancel(); ss.speak(u);
+    }catch(e){}
+  }
+
+  // Speech recognition
+  function getSpeechRecognition(){ return window.SpeechRecognition || window.webkitSpeechRecognition || null; }
+  async function ensureMicPermission(){ if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return {ok:true}; try{ const s = await navigator.mediaDevices.getUserMedia({audio:true}); s.getTracks().forEach(t=>t.stop()); return {ok:true}; }catch(err){ return {ok:false,error:err}; } }
+
+  function startVoiceRecognition(){
+    const SR = getSpeechRecognition();
+    if (!SR){ statusEl.textContent = 'Voice recognition not supported. Use keyboard STOP.'; return; }
+    if (isRecognizing) return;
+    recognition = new SR();
+    recognition.continuous = true; recognition.interimResults = true; recognition.lang='en-US';
+    restartAttempts=0;
+    recognition.onstart = ()=>{ isRecognizing=true; statusEl.textContent = '🎤 Listening... Say "STOP"'; };
+    recognition.onresult = (event)=>{
+      for (let i=event.resultIndex;i<event.results.length;i++){
+        const r = event.results[i];
+        const text = r[0].transcript.trim().toLowerCase();
+        if (r.isFinal){
+          if (STOP_RE.test(text)){
+            const now = Date.now();
+            if (now - lastStopTimestamp > STOP_DEBOUNCE_MS){ lastStopTimestamp = now; stopGame({reason:'voice'}); }
+          }
+        }
+      }
+    };
+    recognition.onerror = (ev)=>{ console.warn(ev); statusEl.textContent = ev && ev.error ? 'Voice error: '+ev.error : 'Voice error'; };
+    recognition.onend = ()=>{ isRecognizing=false; if (running){ if (restartAttempts < MAX_RESTART_ATTEMPTS){ restartAttempts++; setTimeout(()=>{ try{ recognition.start(); }catch(e){} },250); } else { statusEl.textContent = 'Voice recognition stopped. Use keyboard STOP.'; } } else { statusEl.textContent = 'Voice recognition stopped.'; } };
+    try{ recognition.start(); }catch(e){ console.warn('start failed',e); }
+  }
+  function stopVoiceRecognition(){ if (recognition && isRecognizing){ try{ recognition.onresult=null; recognition.onerror=null; recognition.onend=null; recognition.stop(); }catch(e){} } recognition=null; isRecognizing=false; }
+
+  // Start/stop/reset logic with progress and confetti
+  async function startGame(){
+    if (running) return;
+    const target = Number(targetInput.value);
+    if (!target || target <= 0){ alert('Enter valid target (1 - 300)'); targetInput.focus(); return; }
+    const mic = await ensureMicPermission();
+    if (!mic.ok){ statusEl.textContent = 'Microphone unavailable or blocked. Use keyboard STOP.'; }
+    running=true;
+    stopBtn.disabled=false; startBtn.disabled=true; resultEl.style.display='none';
+    lastStopTimestamp=0;
+    startTimer();
+    document.addEventListener('keydown', onKeyDown);
+    startVoiceRecognition();
+  }
+
+  function stopGame({reason='manual'} = {}){
+    if (!running) return;
+    running=false;
+    stopTimer(); stopVoiceRecognition();
+    stopBtn.disabled=true; startBtn.disabled=false; document.removeEventListener('keydown', onKeyDown);
+    const finalTime = (performance.now() - startTime)/1000;
+    const target = Number(targetInput.value); const diff = Math.abs(finalTime - target);
+    timerEl.textContent = formatSeconds(finalTime);
+    targetResult.textContent = formatSeconds(target); yourTimeEl.textContent = formatSeconds(finalTime);
+    let msg='';
+    if (diff < 0.1){
+      msg='🏆 PERFECT!'; differenceEl.className='difference result-level-perfect';
+      // confetti
+      makeConfetti();
+    } else if (diff < 0.5){ msg=`🔥 Very Close! ±${formatSeconds(diff)}s`; differenceEl.className='difference result-level-close'; }
+    else if (diff < 1.0){ msg=`👍 Good Job! ±${formatSeconds(diff)}s`; differenceEl.className='difference result-level-close'; }
+    else { msg=`❌ Missed by ±${formatSeconds(diff)}s`; differenceEl.className='difference result-level-miss'; }
+    differenceEl.textContent = msg;
+    resultEl.style.display='block';
+    // small timer pulse on stop
+    timerEl.style.transform='scale(1.12)';
+    setTimeout(()=>timerEl.style.transform='scale(1)',260);
+
+    // build attempt and auto-save (preserve earlier behavior: auto-save always on)
+    const attempt = { timestamp:Date.now(), target, time:Number(finalTime.toFixed(2)), diff:Number(diff.toFixed(2)) };
+    addHistoryEntry(Object.assign({}, attempt));
+    statusEl.textContent = reason === 'voice' ? '🛑 Timer stopped by voice!' : '🛑 Timer stopped';
+    beep(); speakResult(attempt.time, attempt.diff);
+  }
+
+  function resetGame(){
+    running=false; stopTimer(); stopVoiceRecognition(); document.removeEventListener('keydown', onKeyDown);
+    timerEl.textContent='0.00'; statusEl.textContent='Press START, allow microphone, then say "STOP"';
+    startBtn.disabled=false; stopBtn.disabled=true; resultEl.style.display='none'; progressBar.style.width='0%'; progressWrap.style.opacity='0';
+  }
+
+  function onKeyDown(e){
+    const tag = document.activeElement && document.activeElement.tagName.toLowerCase();
+    if (tag === 'input' || tag === 'textarea'){
+      if (running && (e.code==='Space' || e.key===' ' || e.key==='Enter')){ e.preventDefault(); stopGame({reason:'keyboard'}); }
+      return;
+    }
+    if (!running && (e.code==='Space' || e.key===' ' || e.key==='Enter')){ e.preventDefault(); startGame(); return; }
+    if (running && (e.code==='Space' || e.key===' ' || e.key==='Enter')){ e.preventDefault(); stopGame({reason:'keyboard'}); }
+  }
+
+  // Confetti canvas sizing
+  function resizeCanvas(){ confettiCanvas.width = confettiCanvas.clientWidth; confettiCanvas.height = confettiCanvas.clientHeight; }
+  window.addEventListener('resize', resizeCanvas);
+  requestAnimationFrame(resizeCanvas);
+
+  // Button bindings
+  startBtn.addEventListener('click', startGame);
+  stopBtn.addEventListener('click', ()=>stopGame({reason:'manual'}));
+  resetBtn.addEventListener('click', resetGame);
+  historyBtn.addEventListener('click', ()=>{
+    const open = historyPanel.classList.contains('expanded');
+    if (open){ historyPanel.classList.remove('expanded'); historyPanel.classList.add('collapsed'); historyPanel.setAttribute('aria-hidden','true'); }
+    else { historyPanel.classList.remove('collapsed'); historyPanel.classList.add('expanded'); historyPanel.setAttribute('aria-hidden','false'); renderHistory(); historyPanel.scrollTop=0; }
+  });
+
+  saveBtn.addEventListener('click', ()=>{ alert('Auto-save is enabled; attempts are saved automatically.'); });
+  exportBtn.addEventListener('click', exportCSV);
+  clearHistoryBtn.addEventListener('click', ()=>{ if (!confirm('Clear all attempts?')) return; clearHistory(); });
+
+  // Theme and density toggles
+  themeSelect.addEventListener('change', (e)=>{ if (e.target.value === 'light'){ body.classList.add('theme-light'); } else { body.classList.remove('theme-light'); } });
+  densitySelect.addEventListener('change', (e)=>{ if (e.target.value === 'compact'){ body.classList.add('compact'); } else { body.classList.remove('compact'); } });
+
+  // Init
+  (function init(){
+    stopBtn.disabled=true; renderHistory();
+    targetInput.addEventListener('keydown', (e)=>{ if (e.key==='Enter'){ e.preventDefault(); startGame(); } });
+    const sr = document.getElementById('assistive');
+    const obs = new MutationObserver(()=>{ sr.textContent = statusEl.textContent; });
+    obs.observe(statusEl,{childList:true,characterData:true,subtree:true});
+    if (!getSpeechRecognition()){ statusEl.textContent = 'Voice recognition not supported. Use keyboard STOP.'; }
+    // set sensible defaults
+    themeSelect.value = 'dark';
+    densitySelect.value = 'comfortable';
+  })();
+
+})();
+</script>
+</body>
+</html>
